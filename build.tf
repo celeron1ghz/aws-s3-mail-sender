@@ -7,24 +7,6 @@ resource "aws_s3_bucket" "queue" {
     acl = "private"
 }
 
-resource "aws_sns_topic" "topic" {
-    name = "${var.app_name}-topic"
-    policy = <<POLICY
-{
-    "Version":"2012-10-17",
-    "Statement":[{
-        "Effect": "Allow",
-        "Principal": {"AWS":"*"},
-        "Action": "SNS:Publish",
-        "Resource": "arn:aws:sns:*:*:${var.app_name}-topic",
-        "Condition":{
-            "ArnLike":{"aws:SourceArn":"${aws_s3_bucket.queue.arn}"}
-        }
-    }]
-}
-POLICY
-}
-
 resource "aws_s3_bucket_notification" "queue_notification" {
     bucket = "${aws_s3_bucket.queue.id}"
     topic {
@@ -55,16 +37,43 @@ EOF
 }
 
 resource "aws_lambda_function" "mail_bounce_notifier" {
-    filename = "lambda_bounce_notifier/bounce_notifier.zip"
-    function_name = "${var.app_name}-bounce-notifier"
-    runtime = "nodejs"
-    role = "${aws_iam_role.mail_sender_role.arn}"
-    handler = "acceptessa_mail_bounce_notifier.handler"
+    filename         = "lambda_bounce_notifier/bounce_notifier.zip"
+    function_name    = "${var.app_name}-bounce-notifier"
+    runtime          = "nodejs"
+    role             = "${aws_iam_role.mail_sender_role.arn}"
+    handler          = "acceptessa_mail_bounce_notifier.handler"
+    source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
+}
+
+resource "aws_lambda_function" "mail_sender" {
+    filename         = "lambda_mail_sender/mail_sender.zip"
+    function_name    = "${var.app_name}-sender"
+    runtime          = "nodejs"
+    role             = "${aws_iam_role.mail_sender_role.arn}"
+    handler          = "acceptesa_mail_sender.handler"
     source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
 }
 
 
 /* Email handler topics for SES*/
+resource "aws_sns_topic" "topic" {
+    name = "${var.app_name}-topic"
+    policy = <<POLICY
+{
+    "Version":"2012-10-17",
+    "Statement":[{
+        "Effect": "Allow",
+        "Principal": {"AWS":"*"},
+        "Action": "SNS:Publish",
+        "Resource": "arn:aws:sns:*:*:${var.app_name}-topic",
+        "Condition":{
+            "ArnLike":{"aws:SourceArn":"${aws_s3_bucket.queue.arn}"}
+        }
+    }]
+}
+POLICY
+}
+
 resource "aws_sns_topic" "topic_delivery" {
     name = "${var.app_name}-delivery-status"
 }
@@ -78,7 +87,13 @@ resource "aws_sns_topic" "topic_bounce" {
 }
 
 
-/* All email handling sending notify to slack */
+/* subscription */
+resource "aws_sns_topic_subscription" "subscription_send" {
+    topic_arn = "${aws_sns_topic.topic.arn}"
+    protocol  = "lambda"
+    endpoint  = "${aws_lambda_function.mail_sender.arn}"
+}
+
 resource "aws_sns_topic_subscription" "subscription_delivery" {
     topic_arn = "${aws_sns_topic.topic_delivery.arn}"
     protocol  = "lambda"
@@ -99,6 +114,14 @@ resource "aws_sns_topic_subscription" "subscription_bounce" {
 
 
 /* Add running lambda function permission for SNS */
+resource "aws_lambda_permission" "perm_send" {
+    statement_id  = "${var.app_name}-perm-send-from-sns"
+    action        = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.mail_sender.arn}"
+    principal     = "sns.amazonaws.com"
+    source_arn    = "${aws_sns_topic.topic.arn}"
+}
+
 resource "aws_lambda_permission" "perm_delivery" {
     statement_id  = "${var.app_name}-perm-delivery-notify-from-sns"
     action        = "lambda:InvokeFunction"
