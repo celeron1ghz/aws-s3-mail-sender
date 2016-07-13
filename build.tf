@@ -1,0 +1,124 @@
+variable "app_name" { description = "application name" }
+
+
+/* Email queue */
+resource "aws_s3_bucket" "queue" {
+    bucket = "${var.app_name}-queue"
+    acl = "private"
+}
+
+resource "aws_sns_topic" "topic" {
+    name = "${var.app_name}-topic"
+    policy = <<POLICY
+{
+    "Version":"2012-10-17",
+    "Statement":[{
+        "Effect": "Allow",
+        "Principal": {"AWS":"*"},
+        "Action": "SNS:Publish",
+        "Resource": "arn:aws:sns:*:*:${var.app_name}-topic",
+        "Condition":{
+            "ArnLike":{"aws:SourceArn":"${aws_s3_bucket.queue.arn}"}
+        }
+    }]
+}
+POLICY
+}
+
+resource "aws_s3_bucket_notification" "queue_notification" {
+    bucket = "${aws_s3_bucket.queue.id}"
+    topic {
+        topic_arn = "${aws_sns_topic.topic.arn}"
+        events = ["s3:ObjectCreated:*"]
+    }
+}
+
+
+/* lambda functions and role */
+resource "aws_iam_role" "mail_sender_role" {
+    name = "${var.app_name}-sender-role"
+    assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "lambda.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
+}
+EOF
+}
+
+resource "aws_lambda_function" "mail_bounce_notifier" {
+    filename = "lambda_bounce_notifier/bounce_notifier.zip"
+    function_name = "${var.app_name}-bounce-notifier"
+    runtime = "nodejs"
+    role = "${aws_iam_role.mail_sender_role.arn}"
+    handler = "acceptessa_mail_bounce_notifier.handler"
+    source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
+}
+
+
+/* Email handler topics for SES*/
+resource "aws_sns_topic" "topic_delivery" {
+    name = "${var.app_name}-delivery-status"
+}
+
+resource "aws_sns_topic" "topic_complaint" {
+    name = "${var.app_name}-complaint"
+}
+
+resource "aws_sns_topic" "topic_bounce" {
+    name = "${var.app_name}-bounce"
+}
+
+
+/* All email handling sending notify to slack */
+resource "aws_sns_topic_subscription" "subscription_delivery" {
+    topic_arn = "${aws_sns_topic.topic_delivery.arn}"
+    protocol  = "lambda"
+    endpoint  = "${aws_lambda_function.mail_bounce_notifier.arn}"
+}
+
+resource "aws_sns_topic_subscription" "subscription_complaint" {
+    topic_arn = "${aws_sns_topic.topic_complaint.arn}"
+    protocol  = "lambda"
+    endpoint  = "${aws_lambda_function.mail_bounce_notifier.arn}"
+}
+
+resource "aws_sns_topic_subscription" "subscription_bounce" {
+    topic_arn = "${aws_sns_topic.topic_bounce.arn}"
+    protocol  = "lambda"
+    endpoint  = "${aws_lambda_function.mail_bounce_notifier.arn}"
+}
+
+
+/* Add running lambda function permission for SNS */
+resource "aws_lambda_permission" "perm_delivery" {
+    statement_id  = "${var.app_name}-perm-delivery-notify-from-sns"
+    action        = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
+    principal     = "sns.amazonaws.com"
+    source_arn    = "${aws_sns_topic.topic_delivery.arn}"
+}
+
+resource "aws_lambda_permission" "perm_complaint" {
+    statement_id  = "${var.app_name}-perm-complaint-notify-from-sns"
+    action        = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
+    principal     = "sns.amazonaws.com"
+    source_arn    = "${aws_sns_topic.topic_complaint.arn}"
+}
+
+resource "aws_lambda_permission" "perm_bounce" {
+    statement_id  = "${var.app_name}-perm-bounce-notify-from-sns"
+    action        = "lambda:InvokeFunction"
+    function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
+    principal     = "sns.amazonaws.com"
+    source_arn    = "${aws_sns_topic.topic_bounce.arn}"
+}
