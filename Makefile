@@ -1,0 +1,7 @@
+zip: lambda_bounce_notifier/bounce_notifier.zip lambda_mail_sender/mail_sender.zip
+
+lambda_bounce_notifier/bounce_notifier.zip: lambda_bounce_notifier/acceptessa_mail_bounce_notifier.js
+	zip lambda_bounce_notifier/bounce_notifier.zip lambda_bounce_notifier/acceptessa_mail_bounce_notifier.js
+
+lambda_mail_sender/mail_sender.zip: lambda_mail_sender/acceptesa_mail_sender.js
+	zip lambda_mail_sender/mail_sender.zip lambda_mail_sender/acceptesa_mail_sender.js
