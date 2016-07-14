@@ -1,1 +1,1 @@
-app_name = "acceptessa-mail-send"
+app_name = "acceptessa"
