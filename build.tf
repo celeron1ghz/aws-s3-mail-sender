@@ -36,8 +36,8 @@ resource "aws_iam_role" "mail_sender_role" {
 EOF
 }
 
-resource "aws_iam_role_policy" "mail_sender_policy" {
-    name = "${var.app_name}-role-policy"
+resource "aws_iam_role_policy" "policy" {
+    name = "${var.app_name}-policy"
     role = "${aws_iam_role.mail_sender_role.id}"
     policy = <<EOF
 {
@@ -54,11 +54,27 @@ resource "aws_iam_role_policy" "mail_sender_policy" {
             "Resource": [
                 "arn:aws:logs:*:*:*"
             ]
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ses:SendRawEmail"
+            ],
+            "Resource": [
+                "*"
+            ]
         }
     ]
 }
 EOF
 }
+
+resource "aws_iam_policy_attachment" "s3_policy" {
+    name = "${var.app_name}-s3-policy"
+    roles = ["${aws_iam_role.mail_sender_role.id}"]
+    policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+}
+
 
 resource "aws_lambda_function" "mail_bounce_notifier" {
     filename         = "lambda_bounce_notifier/bounce_notifier.zip"
