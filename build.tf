@@ -37,7 +37,7 @@ EOF
 }
 
 resource "aws_iam_role_policy" "policy" {
-    name = "${var.app_name}-mail-send-policy"
+    name = "${var.app_name}-mail-sender-policy"
     role = "${aws_iam_role.role.id}"
     policy = <<EOF
 {
@@ -70,7 +70,7 @@ EOF
 }
 
 resource "aws_iam_policy_attachment" "s3_policy" {
-    name = "${var.app_name}-mail-send-s3-policy"
+    name = "${var.app_name}-s3-policy"
     roles = ["${aws_iam_role.role.id}"]
     policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
@@ -78,7 +78,7 @@ resource "aws_iam_policy_attachment" "s3_policy" {
 
 resource "aws_lambda_function" "mail_bounce_notifier" {
     filename         = "lambda_bounce_notifier/bounce_notifier.zip"
-    function_name    = "${var.app_name}-mail-send-bounce-notifier"
+    function_name    = "${var.app_name}-bounce-notifier"
     runtime          = "nodejs4.3"
     role             = "${aws_iam_role.role.arn}"
     handler          = "acceptessa_mail_bounce_notifier.handler"
@@ -87,7 +87,7 @@ resource "aws_lambda_function" "mail_bounce_notifier" {
 
 resource "aws_lambda_function" "mail_sender" {
     filename         = "lambda_mail_sender/mail_sender.zip"
-    function_name    = "${var.app_name}-mail-send-sender"
+    function_name    = "${var.app_name}-mail-sender"
     runtime          = "nodejs4.3"
     timeout          = "6"
     role             = "${aws_iam_role.role.arn}"
@@ -98,7 +98,7 @@ resource "aws_lambda_function" "mail_sender" {
 
 /* Email handler topics for SES*/
 resource "aws_sns_topic" "topic" {
-    name = "${var.app_name}-mail-send-topic"
+    name = "${var.app_name}-mail-sender"
     policy = <<POLICY
 {
     "Version":"2012-10-17",
@@ -106,7 +106,7 @@ resource "aws_sns_topic" "topic" {
         "Effect": "Allow",
         "Principal": {"AWS":"*"},
         "Action": "SNS:Publish",
-        "Resource": "arn:aws:sns:*:*:${var.app_name}-mail-send-topic",
+        "Resource": "arn:aws:sns:*:*:${var.app_name}-mail-sender",
         "Condition":{
             "ArnLike":{"aws:SourceArn":"${aws_s3_bucket.queue.arn}"}
         }
@@ -116,15 +116,15 @@ POLICY
 }
 
 resource "aws_sns_topic" "delivery" {
-    name = "${var.app_name}-mail-send-delivery-status"
+    name = "${var.app_name}-mail-delivery-status"
 }
 
 resource "aws_sns_topic" "complaint" {
-    name = "${var.app_name}-mail-send-complaint"
+    name = "${var.app_name}-complaint"
 }
 
 resource "aws_sns_topic" "bounce" {
-    name = "${var.app_name}-mail-send-bounce"
+    name = "${var.app_name}-bounce"
 }
 
 
@@ -156,7 +156,7 @@ resource "aws_sns_topic_subscription" "bounce" {
 
 /* Add running lambda function permission for SNS */
 resource "aws_lambda_permission" "send" {
-    statement_id  = "${var.app_name}-mail-send-perm-send-from-sns"
+    statement_id  = "${var.app_name}-perm-send"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.mail_sender.arn}"
     principal     = "sns.amazonaws.com"
@@ -164,7 +164,7 @@ resource "aws_lambda_permission" "send" {
 }
 
 resource "aws_lambda_permission" "delivery" {
-    statement_id  = "${var.app_name}-mail-send-perm-delivery-notify-from-sns"
+    statement_id  = "${var.app_name}-perm-delivery"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
     principal     = "sns.amazonaws.com"
@@ -172,7 +172,7 @@ resource "aws_lambda_permission" "delivery" {
 }
 
 resource "aws_lambda_permission" "complaint" {
-    statement_id  = "${var.app_name}-mail-send-perm-complaint-notify-from-sns"
+    statement_id  = "${var.app_name}-perm-complaint"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
     principal     = "sns.amazonaws.com"
@@ -180,7 +180,7 @@ resource "aws_lambda_permission" "complaint" {
 }
 
 resource "aws_lambda_permission" "bounce" {
-    statement_id  = "${var.app_name}-mail-send-perm-bounce-notify-from-sns"
+    statement_id  = "${var.app_name}-perm-bounce"
     action        = "lambda:InvokeFunction"
     function_name = "${aws_lambda_function.mail_bounce_notifier.arn}"
     principal     = "sns.amazonaws.com"
