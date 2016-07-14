@@ -16,7 +16,11 @@ exports.handler = (event, context, callback) => {
             return ses.sendRawEmail({ RawMessage: { Data: data.Body.toString() } }).promise();
         })
         .then(data => {
-            //console.log("send ok");
+            console.log("mail send ok. try to delete...");
+            return s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+        })
+        .then(data => {
+            console.log("delete successful.");
             callback(null, data);
         })
         .catch(err => {

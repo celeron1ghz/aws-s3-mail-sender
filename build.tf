@@ -54,11 +54,18 @@ resource "aws_iam_role_policy" "policy" {
             "Resource": [
                 "arn:aws:logs:*:*:*"
             ]
-        },
-        {
+        },{
             "Effect": "Allow",
             "Action": [
                 "ses:SendRawEmail"
+            ],
+            "Resource": [
+                "*"
+            ]
+        },{
+            "Effect": "Allow",
+            "Action": [
+                "s3:DeleteObject"
             ],
             "Resource": [
                 "*"
