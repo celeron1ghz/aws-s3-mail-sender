@@ -36,6 +36,30 @@ resource "aws_iam_role" "mail_sender_role" {
 EOF
 }
 
+resource "aws_iam_role_policy" "mail_sender_policy" {
+    name = "${var.app_name}-role-policy"
+    role = "${aws_iam_role.mail_sender_role.id}"
+    policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogStreams"
+            ],
+            "Resource": [
+                "arn:aws:logs:*:*:*"
+            ]
+        }
+    ]
+}
+EOF
+}
+
 resource "aws_lambda_function" "mail_bounce_notifier" {
     filename         = "lambda_bounce_notifier/bounce_notifier.zip"
     function_name    = "${var.app_name}-bounce-notifier"
