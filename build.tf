@@ -39,7 +39,7 @@ EOF
 resource "aws_lambda_function" "mail_bounce_notifier" {
     filename         = "lambda_bounce_notifier/bounce_notifier.zip"
     function_name    = "${var.app_name}-bounce-notifier"
-    runtime          = "nodejs"
+    runtime          = "nodejs4.3"
     role             = "${aws_iam_role.mail_sender_role.arn}"
     handler          = "acceptessa_mail_bounce_notifier.handler"
     source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
@@ -48,10 +48,11 @@ resource "aws_lambda_function" "mail_bounce_notifier" {
 resource "aws_lambda_function" "mail_sender" {
     filename         = "lambda_mail_sender/mail_sender.zip"
     function_name    = "${var.app_name}-sender"
-    runtime          = "nodejs"
+    runtime          = "nodejs4.3"
+    timeout          = "6"
     role             = "${aws_iam_role.mail_sender_role.arn}"
     handler          = "acceptesa_mail_sender.handler"
-    source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
+    source_code_hash = "${base64sha256(file("lambda_mail_sender/mail_sender.zip"))}"
 }
 
 
