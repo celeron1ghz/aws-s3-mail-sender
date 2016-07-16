@@ -1,8 +1,8 @@
 zip: lambda_bounce_notifier/bounce_notifier.zip lambda_mail_sender/mail_sender.zip
 
-lambda_bounce_notifier/bounce_notifier.js: lambda_bounce_notifier/bounce_notifier.js.sample
+lambda_bounce_notifier/bounce_notifier.js: lambda_bounce_notifier/bounce_notifier.sample.js
 	cd lambda_bounce_notifier; \
-	cat bounce_notifier.js.sample \
+	cat bounce_notifier.sample.js \
 		| sed -e "s|<SLACK_HOOK_URL>|${SLACK_HOOK_URL}|" \
 		| sed -e "s|<SLACK_CHANNEL>|${SLACK_CHANNEL}|" \
 			> bounce_notifier.js;
