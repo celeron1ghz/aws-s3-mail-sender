@@ -21,6 +21,7 @@ Perlだと[Email::MIME](http://search.cpan.org/~rjbs/Email-MIME/)などがあり
 ## 設定
 下記についてはterraformの構築内容に含まれていないので各自で行ってください。
 
+
 #### メールのドメイン設定
 下記の設定を行ってください。
 
@@ -30,6 +31,8 @@ Perlだと[Email::MIME](http://search.cpan.org/~rjbs/Email-MIME/)などがあり
  * SESへのドメイン登録・ドメイン確認
  * SPF、DKIMの設定
  * バウンスの管理のためのSNS topic設定（後述）
+ * SESのsandbox解除申請
+
 
 #### Slackの設定
 バウンスの通知にSlackを利用しています。
