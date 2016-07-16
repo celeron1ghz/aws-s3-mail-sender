@@ -88,7 +88,7 @@ resource "aws_lambda_function" "mail_bounce_notifier" {
     function_name    = "${var.app_name}-bounce-notifier"
     runtime          = "nodejs4.3"
     role             = "${aws_iam_role.role.arn}"
-    handler          = "acceptessa_mail_bounce_notifier.handler"
+    handler          = "bounce_notifier.handler"
     source_code_hash = "${base64sha256(file("lambda_bounce_notifier/bounce_notifier.zip"))}"
 }
 
@@ -98,7 +98,7 @@ resource "aws_lambda_function" "mail_sender" {
     runtime          = "nodejs4.3"
     timeout          = "6"
     role             = "${aws_iam_role.role.arn}"
-    handler          = "acceptesa_mail_sender.handler"
+    handler          = "mail_sender.handler"
     source_code_hash = "${base64sha256(file("lambda_mail_sender/mail_sender.zip"))}"
 }
 
