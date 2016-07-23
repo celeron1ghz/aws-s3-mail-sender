@@ -86,6 +86,7 @@ resource "aws_iam_policy_attachment" "s3_policy" {
 resource "aws_lambda_function" "mail_bounce_notifier" {
     filename         = "lambda_bounce_notifier/bounce_notifier.zip"
     function_name    = "${var.app_name}-bounce-notifier"
+    description      = "Post Bounce/Complaint/Delivery status to slack"
     runtime          = "nodejs4.3"
     role             = "${aws_iam_role.role.arn}"
     handler          = "bounce_notifier.handler"
@@ -95,6 +96,7 @@ resource "aws_lambda_function" "mail_bounce_notifier" {
 resource "aws_lambda_function" "mail_sender" {
     filename         = "lambda_mail_sender/mail_sender.zip"
     function_name    = "${var.app_name}-mail-sender"
+    description      = "Sending email using SES from S3 data"
     runtime          = "nodejs4.3"
     timeout          = "6"
     role             = "${aws_iam_role.role.arn}"
