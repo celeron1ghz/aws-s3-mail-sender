@@ -1,5 +1,41 @@
 variable "app_name" { description = "application name" }
 
+/* user and group */
+resource "aws_iam_user" "user" {
+    name = "${var.app_name}-mail-sender-user"
+    path = "/"
+}
+
+resource "aws_iam_access_key" "user" {
+    user = "${aws_iam_user.user.name}"
+}
+
+resource "aws_iam_group" "group" {
+    name = "${var.app_name}-mail-sender-group"
+    path = "/"
+}
+
+resource "aws_iam_group_membership" "membership" {
+    name = "${var.app_name}-mail-sender-membership"
+    users = [ "${aws_iam_user.user.name}" ]
+    group = "${aws_iam_group.group.name}"
+}
+
+resource "aws_iam_group_policy" "policy" {
+    name = "${var.app_name}-mail-sender-policy"
+    group = "${aws_iam_group.group.id}"
+    policy = <<EOF
+{
+    "Version": "2012-10-17",
+    "Statement": [{
+        "Effect": "Allow",
+        "Action": ["s3:PutObject"],
+        "Resource": "arn:aws:s3:::${aws_s3_bucket.queue.bucket}/*"
+    }]
+}
+EOF
+}
+
 
 /* Email queue */
 resource "aws_s3_bucket" "queue" {
