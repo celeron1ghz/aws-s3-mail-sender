@@ -67,7 +67,7 @@ resource "aws_iam_role_policy" "policy" {
                 "s3:DeleteObject"
             ],
             "Resource": [
-                "*"
+                "${aws_s3_bucket.queue.arn}/*"
             ]
         }
     ]
