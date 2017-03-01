@@ -1,5 +1,8 @@
 service: aws-s3-mail-sender
 
+custom:
+  app_id: acceptessa
+
 provider:
   name: aws
   runtime: nodejs4.3
@@ -24,21 +27,67 @@ provider:
 
 functions:
   notifier:
-    handler: handler.notifier
+    handler:     handler.notifier
     description: Post Bounce/Complaint/Delivery status to slack
-    timeout: 6
-    memorySize: 128
+    timeout:     6
+    memorySize:  128
 
-#    events:
-#      - s3: ${env:BUCKET}
-#      - sns: greeter-topic
+  mailSender:
+    handler:     handler.notifier ##FIXME
+    description: Sending email using SES from S3 data
+    timeout:     6
+    memorySize:  128
 
-#resources:
-#  Resources:
-#    NewResource:
-#      Type: AWS::S3::Bucket
-#      Properties:
-#        BucketName: my-new-bucket
+resources:
+  Resources:
+    ## mail sender topic
+    MailSenderTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName:   ${self:custom.app_id}-mail-sender-2
+        DisplayName: Mail queues by s3:PutObject publish to this topic
+
+    MailSenderTopicPolicy:
+      Type: AWS::SNS::TopicPolicy
+      Properties:
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect:    Allow
+              Principal: { AWS: "*" }
+              Action:    "SNS:Publish"
+              Resource:  "*"
+        Topics:
+          - { Ref: MailSenderTopic }
+
+    ## queue bucket
+    MailQueueBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.app_id}-mail-queue-2
+        NotificationConfiguration:
+          TopicConfigurations:
+            - Event: "s3:ObjectCreated:*"
+              Topic: { Ref: MailSenderTopic }
+
+    ## delivery status
+    MailDeliverStatusTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName:   ${self:custom.app_id}-mail-delivery-status-2
+        DisplayName: Handles SES's Bounce/Complaint/DeliveryStatus
+        Subscription:
+          - Endpoint: { "Fn::GetAtt": [MailSenderLambdaFunction, Arn] }
+            Protocol: lambda
+
+    MailDeliverStatusPerm:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action:       "lambda:InvokeFunction"
+        FunctionName: { "Fn::GetAtt": [MailSenderLambdaFunction, Arn] }
+        Principal:    sns.amazonaws.com
+        SourceArn:    { Ref: MailSenderTopic }
+
 #  Outputs:
 #     NewOutput:
 #       Description: "Description for the output"
