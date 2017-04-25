@@ -1,7 +1,4 @@
-service: aws-s3-mail-sender
-
-custom:
-  app_id: acceptessa
+service: s3-mail-sender
 
 provider:
   name: aws
@@ -9,69 +6,108 @@ provider:
   stage: dev
   region: us-east-1
   deploymentBucket: serverless-upload-us-east-1
-  cfLogs: true
+  versionFunctions: false
 
 functions:
   notifier:
     handler:     handler.notifier
-    description: Post Bounce/Complaint/Delivery status to slack
+    description: Post SES's Bounce/Complaint/Delivery status to slack
     timeout:     6
     memorySize:  128
-    role:        MyRole
     environment:
       S3_MAIL_SENDER_SLACK_HOOK_URL: ${file(kms.js):kms.S3_MAIL_SENDER_SLACK_HOOK_URL}
       S3_MAIL_SENDER_SLACK_CHANNEL:  ${file(kms.js):kms.S3_MAIL_SENDER_SLACK_CHANNEL}
 
   mailSender:
-    handler:     handler.notifier ##FIXME
-    description: Sending email using SES from S3 data
+    handler:     handler.sender
+    description: Sending email with SES from S3 data
     timeout:     6
     memorySize:  128
-    role:        MyRole
+    role: MailSenderRole
+    events:
+      - sns: "${self:service}-queue"
 
 resources:
   Resources:
-    MyRole:
+    ##### resource for delivery status notify
+    StatusNotifyTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName:   "${self:service}-delivery-status"
+        DisplayName: Handles SES's Bounce/Complaint/DeliveryStatus
+        Subscription:
+          - Endpoint: { Fn::GetAtt: [NotifierLambdaFunction, Arn] }
+            Protocol: lambda
+
+    StatusNotifyPerm:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action:       "lambda:InvokeFunction"
+        FunctionName: { Fn::GetAtt: [NotifierLambdaFunction, Arn] }
+        Principal:    sns.amazonaws.com
+        SourceArn:    { Ref: StatusNotifyTopic }
+
+    ## resource for mail sender
+    MailSenderRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: ${self:custom.app_id}-mail-sender-role-2
+        RoleName: "${self:service}-notify-role"
         AssumeRolePolicyDocument:
           Version: "2012-10-17"
           Statement:
             - Effect:    Allow
-              Principal: { Service: "lambda.amazonaws.com" }
-              Action:    "sts:AssumeRole"
+              Principal:
+                Service: lambda.amazonaws.com
+              Action:
+                - sts:AssumeRole
         ManagedPolicyArns:
-          - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+          - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
         Policies:
-          - PolicyName: ${self:custom.app_id}-mail-sender-policy-2
+          - PolicyName: "${self:service}-notify-policy"
             PolicyDocument:
               Version: "2012-10-17"
               Statement:
                 - Effect: Allow
-                  Action: ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
-                  Resource: "arn:aws:logs:*:*:*"
+                  Resource: arn:aws:logs:*:*:*
+                  Action:
+                    - logs:CreateLogGroup
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                    - logs:DescribeLogStreams
                 - Effect: Allow
-                  Action: ["ses:SendRawEmail"]
                   Resource: "*"
+                  Action:
+                    - ses:SendRawEmail
                 - Effect: Allow
-                  Action: ["s3:DeleteObject"]
                   Resource:
-                    "Fn::Join" : [ 
-                      "", 
-                      ["arn:aws:s3:::", { Ref : MailQueueBucket }, "/*" ]
-                    ]
+                    Fn::Join : [ "", ["arn:aws:s3:::${self:service}-queue/*" ] ]
+                  Action:
+                    - s3:DeleteObject
 
-    ## mail sender topic
-    MailSenderTopic:
-      Type: AWS::SNS::Topic
+    MailSenderBucket:
+      Type: AWS::S3::Bucket
       Properties:
-        TopicName:   ${self:custom.app_id}-mail-sender-2
-        DisplayName: Mail queues by s3:PutObject publish to this topic
+        BucketName: "${self:service}-queue"
+        NotificationConfiguration:
+          TopicConfigurations:
+            - Event: "s3:ObjectCreated:*"
+              Topic:
+                Fn::Join: [":", [ "arn:aws:sns", { Ref: 'AWS::Region' }, { Ref: 'AWS::AccountId' }, "${self:service}-queue" ]]
+
+    MailSenderPerm:
+      Type: AWS::Lambda::Permission
+      Properties:
+        Action:       "lambda:InvokeFunction"
+        FunctionName: { "Fn::GetAtt": [MailSenderLambdaFunction, Arn] }
+        Principal:    sns.amazonaws.com
+        SourceArn:
+          Fn::Join : [ "", ["arn:aws:s3:::${self:service}-queue/*" ] ]
 
     MailSenderTopicPolicy:
       Type: AWS::SNS::TopicPolicy
       Properties:
+        Topics:
+          - Fn::Join: [":", [ "arn:aws:sns", { Ref: AWS::Region }, { Ref: AWS::AccountId }, "${self:service}-queue" ]]
         PolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -81,43 +117,5 @@ resources:
               Resource:  "*"
               Condition:
                 ArnLike:
-                  "aws:SourceArn":
-                    "Fn::Join" : [ 
-                      "", 
-                      ["arn:aws:s3:*:*:", { Ref : MailQueueBucket } ]
-                    ]
-        Topics:
-          - { Ref: MailSenderTopic }
-
-    ## queue bucket
-    MailQueueBucket:
-      Type: AWS::S3::Bucket
-      Properties:
-        BucketName: ${self:custom.app_id}-mail-queue-2
-        NotificationConfiguration:
-          TopicConfigurations:
-            - Event: "s3:ObjectCreated:*"
-              Topic: { Ref: MailSenderTopic }
-
-    ## delivery status
-    MailDeliverStatusTopic:
-      Type: AWS::SNS::Topic
-      Properties:
-        TopicName:   ${self:custom.app_id}-mail-delivery-status-2
-        DisplayName: Handles SES's Bounce/Complaint/DeliveryStatus
-        Subscription:
-          - Endpoint: { "Fn::GetAtt": [MailSenderLambdaFunction, Arn] }
-            Protocol: lambda
-
-    MailDeliverStatusPerm:
-      Type: AWS::Lambda::Permission
-      Properties:
-        Action:       "lambda:InvokeFunction"
-        FunctionName: { "Fn::GetAtt": [MailSenderLambdaFunction, Arn] }
-        Principal:    sns.amazonaws.com
-        SourceArn:    { Ref: MailSenderTopic }
-
-#  Outputs:
-#     NewOutput:
-#       Description: "Description for the output"
-#       Value: "Some output value"
+                  aws:SourceArn:
+                    Fn::Join: [ "", ["arn:aws:s3:*:*:${self:service}-queue" ] ]

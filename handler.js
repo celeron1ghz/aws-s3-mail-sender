@@ -1,117 +1,100 @@
 'use strict';
-
-var url = require('url');
-var https = require('https');
-
-var hookUrl      = process.env.S3_MAIL_SENDER_SLACK_HOOK_URL;
-var slackChannel = process.env.S3_MAIL_SENDER_SLACK_CHANNEL;
-
-var postMessage = function(message, callback) {
-    var body = JSON.stringify(message);
-    var options = url.parse(hookUrl);
-    options.method = 'POST';
-    options.headers = {
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-    };
-
-    var postReq = https.request(options, function(res) {
-        var chunks = [];
-        res.setEncoding('utf8');
-        res.on('data', function(chunk) {
-            return chunks.push(chunk);
-        });
-        res.on('end', function() {
-            var body = chunks.join('');
-            if (callback) {
-                callback({
-                    body: body,
-                    statusCode: res.statusCode,
-                    statusMessage: res.statusMessage
-                });
-            }
-        });
-        return res;
-    });
-
-    postReq.write(body);
-    postReq.end();
+const METHODS = {
+    Bounce: e => {
+        let b = e.bounce;
+        let m = e.mail;
+        return {
+            text:        '*BOUNCE MAIL DETECTED!!!!!*',
+            icon_emoji:  ':warning:',
+            attachments: [
+                { color: 'warning', title: "Bounce Type",  text: b.bounceType + ' / ' + b.bounceSubType, },
+                { color: 'warning', title: "ID",           text: m.messageId, },
+                { color: 'warning', title: "From Address", text: m.source, },
+                { color: 'warning', title: "To Address",   text: m.destination.toString(), },
+                { color: 'warning', title: "Send At",      text: m.timestamp, },
+            ],
+        }
+    },
+    Complaint: e => {
+        let c = e.complaint;
+        let m = e.mail;
+        return {
+            text:        '*COMPLAINT MAIL DETECTED!!!!!*',
+            icon_emoji:  ':warning:',
+            attachments: [
+                { color: 'danger', title: "Complaint Type", text: c.complaintFeedbackType, },
+                { color: 'danger', title: "ID",             text: m.messageId, },
+                { color: 'danger', title: "From Address",   text: m.source, },
+                { color: 'danger', title: "To Address",     text: m.destination.toString(), },
+                { color: 'danger', title: "Send At",        text: m.timestamp, },
+            ],
+        };
+    },
+    Delivery: e => {
+        let m = e.mail;
+        return {
+            text:        '',
+            icon_emoji:  ':nico_smile:',
+            attachments: [{
+                mrkdwn_in: ['text'],
+                color: 'good',
+                title: 'Sending Mail Success',
+                text:  `From = ${m.source}` + "\n" +
+                       `To = [ ${m.destination.toString()} ]` + "\n" +
+                       `ID = ${m.messageId}` + "\n" +
+                       `SendAt = ${m.timestamp}`,
+            }],
+        };
+    },
 };
 
-module.exports.notifier = (event, context, callback) => {
-    console.log(JSON.stringify(event));
-    var e    = JSON.parse(event.Records[0].Sns.Message);
-    var type = e.notificationType;
-    var text;
-    var attach;
-    var icon;
-    
-    if (type == "Bounce") {
-        var b = e.bounce;
-        var m = e.mail;
-        
-        icon = ':warning:';
-        text = '*BOUNCE MAIL DETECTED!!!!!*';
-        attach = [
-            { color: 'warning', title: "Bounce Type",  text: b.bounceType + ' / ' + b.bounceSubType, },
-            { color: 'warning', title: "ID",           text: m.messageId, },
-            { color: 'warning', title: "From Address", text: m.source, },
-            { color: 'warning', title: "To Address",   text: m.destination.toString(), },
-            { color: 'warning', title: "Send At",      text: m.timestamp, },
-        ];
-    }
-    else if (type == "Complaint") {
-        var c = e.complaint;
-        var m = e.mail;
-        
-        icon = ':warning:';
-        text = '*COMPLAINT MAIL DETECTED!!!!!*';
-        attach = [
-            { color: 'danger', title: "Complaint Type", text: c.complaintFeedbackType, },
-            { color: 'danger', title: "ID",             text: m.messageId, },
-            { color: 'danger', title: "From Address",   text: m.source, },
-            { color: 'danger', title: "To Address",     text: m.destination.toString(), },
-            { color: 'danger', title: "Send At",        text: m.timestamp, },
-        ];
-    } else if (type == "Delivery") {
-        var m = e.mail;
-        
-        icon = ':nico_smile:';
-        text = '';
-        attach = [{   
-            mrkdwn_in: ['text'],
-            color: 'good',
-            title: 'Sending Mail Success!!', 
-            text:  "from = " + m.source + "\nto = [ " + m.destination.toString() + " ]\n\n"
-                        + "(ID=" + m.messageId + ", send_at=" + m.timestamp,
-        }];
-    } else {
-        text = type;
-        attach = [{   
-            color: 'danger',
-            text:  "UNKNOWN",
-            title: "UNKNOWN",
-        }];
-    }
-    
-    var slackMessage = {
-        channel: slackChannel,
-        text: text,
-        mrkdwn: true,
-        username: 'Mail Status Notify!!!!!!',
-        icon_emoji: icon,
-        attachments: attach, 
-    };
+const Slack = require('slack-node');
+const slack = new Slack();
+slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_HOOK_URL);
 
-    postMessage(slackMessage, function(response) {
-        if (response.statusCode < 400) {
-            console.info('Message posted successfully');
-            context.succeed();
-        } else if (response.statusCode < 500) {
-            console.error("Error posting message to Slack API: " + response.statusCode + " - " + response.statusMessage);
-            context.succeed();
-        } else {
-            context.fail("Server error when processing message: " + response.statusCode + " - " + response.statusMessage);
-        }
-    });
+module.exports.notifier = (event, context, callback) => {
+    //console.log(JSON.stringify(event));
+    const e    = JSON.parse(event.Records[0].Sns.Message);
+    const type = e.notificationType;
+    const meth = METHODS[type];
+    let ret;
+
+    if (meth)   {
+        ret = meth(e);
+    } else {
+        ret = {
+            icon_emoji:  null,
+            text:        type,
+            attachments: [{
+                color: 'danger',
+                text:  "UNKNOWN",
+                title: "UNKNOWN",
+            }],
+        };
+    }
+
+    ret.channel  = process.env.S3_MAIL_SENDER_SLACK_CHANNEL;
+    ret.mrkdwn   = true;
+    ret.username = 'Mail Status Notify';
+
+    Promise.resolve()
+        .then(data =>
+            new Promise((resolve,reject) => {
+                slack.webhook(ret, (err,res) => { resolve(res) })
+            })
+        )
+        .then(data => {
+            console.log(data);
+            callback(null, data);
+        })
+        .catch(err => {
+            console.log("error happen.");
+            console.log(err);
+            context.fail(err);
+        })
+};
+
+module.exports.sender = (event, context, callback) => {
+    console.log(event);
+    callback(null, event);
 };
