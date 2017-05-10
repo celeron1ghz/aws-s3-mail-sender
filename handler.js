@@ -1,4 +1,5 @@
 'use strict';
+
 const METHODS = {
     Bounce: e => {
         let b = e.bounce;
@@ -48,19 +49,14 @@ const METHODS = {
     },
 };
 
-const Slack = require('slack-node');
-const slack = new Slack();
-slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_HOOK_URL);
 
 module.exports.notifier = (event, context, callback) => {
-    //console.log(JSON.stringify(event));
     const e    = JSON.parse(event.Records[0].Sns.Message);
     const type = e.notificationType;
-    const meth = METHODS[type];
     let ret;
 
-    if (meth)   {
-        ret = meth(e);
+    if (METHODS[type])   {
+        ret = METHODS[type](e);
     } else {
         ret = {
             icon_emoji:  null,
@@ -73,28 +69,59 @@ module.exports.notifier = (event, context, callback) => {
         };
     }
 
+    const Slack = require('slack-node');
+    const slack = new Slack();
+    slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_HOOK_URL);
+
     ret.channel  = process.env.S3_MAIL_SENDER_SLACK_CHANNEL;
     ret.mrkdwn   = true;
     ret.username = 'Mail Status Notify';
 
     Promise.resolve()
-        .then(data =>
-            new Promise((resolve,reject) => {
-                slack.webhook(ret, (err,res) => { resolve(res) })
+        .then(data =>{
+            console.log("Post to slack...");
+            return new Promise((resolve,reject) => {
+                slack.webhook(ret, (err,res) => {
+                    if (err) { reject(err) } else { resolve(res) }
+                });
             })
-        )
+        })
         .then(data => {
-            console.log(data);
+            console.log(" ==> ", data);
             callback(null, data);
         })
         .catch(err => {
-            console.log("error happen.");
-            console.log(err);
-            context.fail(err);
+            console.log("error happen: ", err);
+            callback(err);
         })
 };
 
 module.exports.sender = (event, context, callback) => {
-    console.log(event);
-    callback(null, event);
+    const mess   = JSON.parse(event.Records[0].Sns.Message);
+    const bucket = mess.Records[0].s3.bucket.name;
+    const key    = decodeURIComponent(mess.Records[0].s3.object.key.replace(/\+/g, ' '));
+
+    const aws = require('aws-sdk');
+    const s3  = new aws.S3();
+    const ses = new aws.SES();
+
+    console.log(`S3.getObject(${bucket}#${key})`);
+    s3.getObject({ Bucket: bucket, Key: key }).promise()
+        .then(data => {
+            console.log(`SES.sendRawEmail(${data.Body.toString().length})`);
+            return ses.sendRawEmail({ RawMessage: { Data: data.Body.toString() } }).promise();
+        })
+        .then(data => {
+            console.log(" ==> ", data);
+            console.log(`S3.deleteObject(${bucket}#${key})`);
+            return s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+        })
+        .then(data => {
+            console.log(" ==> ", data);
+            callback(null, data);
+        })
+        .catch(err => {
+            console.log(" ERROR! ", err);
+            callback(err);
+        });
 };
