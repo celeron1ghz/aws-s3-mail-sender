@@ -1,6 +1,2 @@
-.envrc
-*.zip
-*.tfstate
-*.backup
-bounce_notifier.js
-.serverless/*
+node_modules
+.serverless
