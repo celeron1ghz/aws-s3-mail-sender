@@ -19,7 +19,7 @@ Perlだと[Email::MIME](http://search.cpan.org/~rjbs/Email-MIME/)などがあり
 
 
 ## 設定
-下記についてはterraformの構築内容に含まれていないので各自で行ってください。
+下記についてはserverlessの構築内容に含まれていないので各自で行ってください。
 
 
 #### メールのドメイン設定
