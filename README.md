@@ -27,27 +27,20 @@ Perlだと[Email::MIME](http://search.cpan.org/~rjbs/Email-MIME/)などがあり
 
 （とは言ってもだいたいワンクリックで終わるようになっているのでどうということはない）
 
- * route53でのドメイン取得・nameserverの設定
+ * route53でのドメイン取得とnameserverの設定
  * SESへのドメイン登録・ドメイン確認
  * SPF、DKIMの設定
- * バウンスの管理のためのSNS topic設定（後述）
  * SESのsandbox解除申請
+ * バウンスの管理のためのSNS topic設定（後述）
 
 
 #### Slackの設定
 バウンスの通知にSlackを利用しています。
-環境変数に設定しておけばよしなに設定してくれますので、以下の環境変数を設定しておいてください。
-（`.envrc`あたりに書いておくのがよいでしょう）
+`credstash` で下記のキーと対応する値をセットしてください。
 
- * `SLACK_HOOK_URL` Slackのincoming webhookのURL
- * `SLACK_CHANNEL` ポストするチャンネル
+ * `S3_MAIL_SENDER_SLACK_HOOK_URL` SlackのIncoming Webhook URL
+ * `S3_MAIL_SENDER_SLACK_CHANNEL` Slackのpostするチャンネル
 
 
 ## 構築
-構築はterraformでやるのでコマンド一発ですが、slackのポスト先を埋め込むのに`make`を打ってから`terraform apply`してください。
-
-```
-make
-terraform plan # check...
-terraform apply
-```
+serverlessで作っているので `sls deploy` で完了です。
