@@ -88,6 +88,7 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: "${self:service}-queue"
+        ## first, comment out at end of file from this line. after deploy, comment in and deploy again
         NotificationConfiguration:
           TopicConfigurations:
             - Event: "s3:ObjectCreated:*"
