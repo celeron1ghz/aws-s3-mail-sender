@@ -12,8 +12,8 @@ functions:
   notifier:
     handler:     handler.notifier
     description: Post SES's Bounce/Complaint/Delivery status to slack
-    timeout:     6
-    memorySize:  128
+    timeout:     10
+    memorySize:  1024
     environment:
       S3_MAIL_SENDER_SLACK_HOOK_URL: ${file(kms.js):kms.S3_MAIL_SENDER_SLACK_HOOK_URL}
       S3_MAIL_SENDER_SLACK_CHANNEL:  ${file(kms.js):kms.S3_MAIL_SENDER_SLACK_CHANNEL}
@@ -21,8 +21,8 @@ functions:
   mailSender:
     handler:     handler.sender
     description: Sending email with SES from S3 data
-    timeout:     6
-    memorySize:  128
+    timeout:     20
+    memorySize:  1024
     role: MailSenderRole
     events:
       - sns: "${self:service}-queue"
