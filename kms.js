@@ -1,9 +1,8 @@
 const exec = require('child_process').execSync;
-const kms = key => exec(`credstash -r ap-northeast-1 get ${key}`).toString();
+const kms = key => exec(`aws ssm get-parameter --name ${key} --with-decryption --query 'Parameter.Value' --output text`).toString();
 
 module.exports.kms = () => {
     return {
-        S3_MAIL_SENDER_SLACK_HOOK_URL: kms('S3_MAIL_SENDER_SLACK_HOOK_URL'),
-        S3_MAIL_SENDER_SLACK_CHANNEL:  kms('S3_MAIL_SENDER_SLACK_CHANNEL'),
+        S3_MAIL_SENDER_SLACK_HOOK_URL: kms('/s3mail/slack'),
     }   
 };

@@ -35,7 +35,6 @@ const METHODS = {
         let m = e.mail;
         return {
             text:        '',
-            icon_emoji:  ':nico_smile:',
             attachments: [{
                 mrkdwn_in: ['text'],
                 color: 'good',
@@ -59,7 +58,6 @@ module.exports.notifier = (event, context, callback) => {
         ret = METHODS[type](e);
     } else {
         ret = {
-            icon_emoji:  null,
             text:        type,
             attachments: [{
                 color: 'danger',
@@ -72,10 +70,7 @@ module.exports.notifier = (event, context, callback) => {
     const Slack = require('slack-node');
     const slack = new Slack();
     slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_HOOK_URL);
-
-    ret.channel  = process.env.S3_MAIL_SENDER_SLACK_CHANNEL;
     ret.mrkdwn   = true;
-    ret.username = 'Mail Status Notify';
 
     Promise.resolve()
         .then(data =>{
