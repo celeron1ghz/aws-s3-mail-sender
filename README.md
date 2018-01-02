@@ -36,7 +36,7 @@ Perlだと[Email::MIME](http://search.cpan.org/~rjbs/Email-MIME/)などがあり
 
 #### Slackの設定
 バウンスの通知にSlackを利用しています。
-`credstash` で下記のキーと対応する値をセットしてください。
+下記の値をEC2 Parameter Storeに設定してください。
 
  * `S3_MAIL_SENDER_SLACK_HOOK_URL` SlackのIncoming Webhook URL
  * `S3_MAIL_SENDER_SLACK_CHANNEL` Slackのpostするチャンネル
