@@ -1,5 +1,5 @@
 # aws-s3-mail-sender
-If you put a mail contents to s3, send itvia AWS SES.
+If you put a mail contents to s3, send it via AWS Simple Email Service.
 
 
 ## DESCRIPTION
@@ -18,7 +18,7 @@ Delivery status are notify to slack.
 
 
 ### This script **DON'T**:
- * Creating email
+ * Creating email (create mail contents yourself)
  * Setup SES setting (setup manually yourself)
 
 
