@@ -20,8 +20,6 @@ functions:
     description: Post SES's Bounce/Complaint/Delivery status to slack
     timeout:     10
     memorySize:  1024
-    environment:
-      S3_MAIL_SENDER_SLACK_HOOK_URL: ${file(kms.js):kms.S3_MAIL_SENDER_SLACK_HOOK_URL}
 
   mailSender:
     handler:     handler.sender

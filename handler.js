@@ -78,7 +78,7 @@ module.exports.notifier = (event, context, callback) => {
         slack.setWebhook(url);
         ret.mrkdwn  = true;
 
-        const slack_ret = new Promise((resolve,reject) => {
+        const slack_ret = yield new Promise((resolve,reject) => {
             slack.webhook(ret, (err,res) => {
                 if (err) { reject(err) } else { resolve(res) }
             });
