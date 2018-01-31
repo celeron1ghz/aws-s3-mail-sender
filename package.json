@@ -2,6 +2,23 @@
   "name": "aws-s3-mail-sender",
   "version": "1.0.0",
   "dependencies": {
-    "slack-node": "^0.1.8"
-  }
+    "slack-node": "^0.1.8",
+    "vo": "^4.0.2"
+  },
+  "description": "sending email",
+  "main": "handler.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/celeron1ghz/aws-s3-mail-sender.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/celeron1ghz/aws-s3-mail-sender/issues"
+  },
+  "homepage": "https://github.com/celeron1ghz/aws-s3-mail-sender#readme"
 }

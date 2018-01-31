@@ -54,6 +54,10 @@ module.exports.notifier = (event, context, callback) => {
     const type = e.notificationType;
     let ret;
 
+    const aws = require('aws-sdk');
+    const vo  = require('vo');
+    const ssm = new aws.SSM();
+
     if (METHODS[type])   {
         ret = METHODS[type](e);
     } else {
@@ -67,28 +71,25 @@ module.exports.notifier = (event, context, callback) => {
         };
     }
 
-    const Slack = require('slack-node');
-    const slack = new Slack();
-    slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_HOOK_URL);
-    ret.mrkdwn   = true;
+    vo(function*(){
+        const url   = (yield ssm.getParameter({ Name: '/s3mail/slack', WithDecryption: true }).promise() ).Parameter.Value;
+        const Slack = require('slack-node');
+        const slack = new Slack();
+        slack.setWebhook(url);
+        ret.mrkdwn   = true;
 
-    Promise.resolve()
-        .then(data =>{
-            console.log("Post to slack...");
-            return new Promise((resolve,reject) => {
-                slack.webhook(ret, (err,res) => {
-                    if (err) { reject(err) } else { resolve(res) }
-                });
-            })
-        })
-        .then(data => {
-            console.log(" ==> ", data);
-            callback(null, data);
-        })
-        .catch(err => {
-            console.log("error happen: ", err);
-            callback(err);
-        })
+        const ret = new Promise((resolve,reject) => {
+            slack.webhook(ret, (err,res) => {
+                if (err) { reject(err) } else { resolve(res) }
+            });
+        });
+
+        console.log(" ==> ", ret);
+        callback(null, ret);
+    }).catch(err => {
+        console.log("error happen:", err);
+        callback(err);
+    });
 };
 
 module.exports.sender = (event, context, callback) => {
