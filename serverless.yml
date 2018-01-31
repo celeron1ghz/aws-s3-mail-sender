@@ -7,6 +7,12 @@ provider:
   region: us-east-1
   deploymentBucket: serverless-upload-us-east-1
   versionFunctions: false
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - ssm:GetParameter
+      Resource:
+        Fn::Join: [ ":", ["arn:aws:ssm:ap-northeast-1", { Ref: AWS::AccountId }, "parameter/s3mail/slack"]]
 
 functions:
   notifier:

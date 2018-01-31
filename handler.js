@@ -56,7 +56,7 @@ module.exports.notifier = (event, context, callback) => {
 
     const aws = require('aws-sdk');
     const vo  = require('vo');
-    const ssm = new aws.SSM();
+    const ssm = new aws.SSM({ region: 'ap-northeast-1' });
 
     if (METHODS[type])   {
         ret = METHODS[type](e);
@@ -76,16 +76,16 @@ module.exports.notifier = (event, context, callback) => {
         const Slack = require('slack-node');
         const slack = new Slack();
         slack.setWebhook(url);
-        ret.mrkdwn   = true;
+        ret.mrkdwn  = true;
 
-        const ret = new Promise((resolve,reject) => {
+        const slack_ret = new Promise((resolve,reject) => {
             slack.webhook(ret, (err,res) => {
                 if (err) { reject(err) } else { resolve(res) }
             });
         });
 
-        console.log(" ==> ", ret);
-        callback(null, ret);
+        console.log(" ==> ", slack_ret);
+        callback(null, slack_ret);
     }).catch(err => {
         console.log("error happen:", err);
         callback(err);
