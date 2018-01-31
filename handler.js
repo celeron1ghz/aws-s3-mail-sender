@@ -84,7 +84,7 @@ module.exports.notifier = (event, context, callback) => {
             });
         });
 
-        console.log(" ==> ", slack_ret);
+        console.log(slack_ret);
         callback(null, slack_ret);
     }).catch(err => {
         console.log("error happen:", err);
@@ -100,24 +100,23 @@ module.exports.sender = (event, context, callback) => {
     const aws = require('aws-sdk');
     const s3  = new aws.S3();
     const ses = new aws.SES();
+    const vo  = require('vo');
 
-    console.log(`S3.getObject(${bucket}#${key})`);
-    s3.getObject({ Bucket: bucket, Key: key }).promise()
-        .then(data => {
-            console.log(`SES.sendRawEmail(${data.Body.toString().length})`);
-            return ses.sendRawEmail({ RawMessage: { Data: data.Body.toString() } }).promise();
-        })
-        .then(data => {
-            console.log(" ==> ", data);
-            console.log(`S3.deleteObject(${bucket}#${key})`);
-            return s3.deleteObject({ Bucket: bucket, Key: key }).promise();
-        })
-        .then(data => {
-            console.log(" ==> ", data);
-            callback(null, data);
-        })
-        .catch(err => {
-            console.log(" ERROR! ", err);
-            callback(err);
-        });
+    vo(function*(){
+        console.log(`S3.getObject(${bucket}#${key})`);
+        const received = yield s3.getObject({ Bucket: bucket, Key: key }).promise();
+
+        console.log(`SES.sendRawEmail(${received.Body.toString().length})`);
+        const mail = yield ses.sendRawEmail({ RawMessage: { Data: received.Body.toString() } }).promise();
+
+        console.log(" ==> ", mail);
+        console.log(`S3.deleteObject(${bucket}#${key})`);
+        const deleted = yield s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+
+        console.log(" ==> ", deleted);
+        callback(null, "OK");
+    }).catch(err => {
+        console.log("error happen:", err);
+        callback(err);
+    });
 };
