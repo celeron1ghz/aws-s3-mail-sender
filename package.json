@@ -2,8 +2,7 @@
   "name": "aws-s3-mail-sender",
   "version": "1.0.0",
   "dependencies": {
-    "slack-node": "^0.1.8",
-    "vo": "^4.0.2"
+    "slack-node": "^0.1.8"
   },
   "description": "sending email",
   "main": "handler.js",

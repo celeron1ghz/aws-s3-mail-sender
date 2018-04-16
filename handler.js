@@ -49,13 +49,12 @@ const METHODS = {
 };
 
 
-module.exports.notifier = (event, context, callback) => {
+module.exports.notifier = async (event, context, callback) => {
   const e = JSON.parse(event.Records[0].Sns.Message);
   const type = e.notificationType;
   let ret;
 
   const aws = require('aws-sdk');
-  const vo = require('vo');
   const ssm = new aws.SSM({ region: 'ap-northeast-1' });
 
   if (METHODS[type]) {
@@ -71,14 +70,14 @@ module.exports.notifier = (event, context, callback) => {
     };
   }
 
-  vo(function* () {
-    const url = (yield ssm.getParameter({ Name: '/s3mail/slack', WithDecryption: true }).promise()).Parameter.Value;
+  try {
+    const url = (await ssm.getParameter({ Name: '/s3mail/slack', WithDecryption: true }).promise()).Parameter.Value;
     const Slack = require('slack-node');
     const slack = new Slack();
     slack.setWebhook(url);
     ret.mrkdwn = true;
 
-    const slack_ret = yield new Promise((resolve, reject) => {
+    const slack_ret = await new Promise((resolve, reject) => {
       slack.webhook(ret, (err, res) => {
         if (err) { reject(err) } else { resolve(res) }
       });
@@ -86,13 +85,13 @@ module.exports.notifier = (event, context, callback) => {
 
     console.log(slack_ret);
     callback(null, slack_ret);
-  }).catch(err => {
+  } catch (err) {
     console.log("error happen:", err);
     callback(err);
-  });
+  }
 };
 
-module.exports.sender = (event, context, callback) => {
+module.exports.sender = async (event, context, callback) => {
   const mess = JSON.parse(event.Records[0].Sns.Message);
   const bucket = mess.Records[0].s3.bucket.name;
   const key = decodeURIComponent(mess.Records[0].s3.object.key.replace(/\+/g, ' '));
@@ -100,23 +99,22 @@ module.exports.sender = (event, context, callback) => {
   const aws = require('aws-sdk');
   const s3  = new aws.S3();
   const ses = new aws.SES();
-  const vo  = require('vo');
 
-  vo(function* () {
+  try {
     console.log(`S3.getObject(${bucket}#${key})`);
-    const received = yield s3.getObject({ Bucket: bucket, Key: key }).promise();
+    const received = await s3.getObject({ Bucket: bucket, Key: key }).promise();
 
     console.log(`SES.sendRawEmail(${received.Body.toString().length})`);
-    const mail = yield ses.sendRawEmail({ RawMessage: { Data: received.Body.toString() } }).promise();
+    const mail = await ses.sendRawEmail({ RawMessage: { Data: received.Body.toString() } }).promise();
 
     console.log(" ==> ", mail);
     console.log(`S3.deleteObject(${bucket}#${key})`);
-    const deleted = yield s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+    const deleted = await s3.deleteObject({ Bucket: bucket, Key: key }).promise();
 
     console.log(" ==> ", deleted);
     callback(null, "OK");
-  }).catch(err => {
+  } catch (err) {
     console.log("error happen:", err);
     callback(err);
-  });
+  }
 };

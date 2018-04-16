@@ -18,14 +18,12 @@ functions:
   notifier:
     handler:     handler.notifier
     description: Post SES's Bounce/Complaint/Delivery status to slack
-    timeout:     10
-    memorySize:  1024
+    timeout: 10
 
   mailSender:
     handler:     handler.sender
     description: Sending email with SES from S3 data
-    timeout:     20
-    memorySize:  1024
+    timeout: 20
     role: MailSenderRole
     events:
       - sns: "${self:service}-queue"
@@ -86,25 +84,6 @@ resources:
                     Fn::Join : [ "", ["arn:aws:s3:::${self:service}-queue/*" ] ]
                   Action:
                     - s3:DeleteObject
-
-    MailSenderBucketAlarm:
-      Type: AWS::CloudWatch::Alarm
-      Properties:
-        MetricName: NumberOfObjects
-        Namespace:  AWS/S3
-        ComparisonOperator: GreaterThanThreshold
-        EvaluationPeriods: 1
-        Period:    60  
-        Statistic: Sum 
-        Threshold: 0
-        Dimensions:
-          - { Name: StorageType, Value: AllStorageTypes }
-          - { Name: BucketName,  Value: { Ref: MailSenderBucket } }
-        TreatMissingData: notBreaching
-        AlarmActions:
-          - Fn::Join: [ ":", [ "arn:aws:sns:ap-northeast-1", { Ref: AWS::AccountId }, "aws-slack-notifier" ] ] 
-        OKActions:
-          - Fn::Join: [ ":", [ "arn:aws:sns:ap-northeast-1", { Ref: AWS::AccountId }, "aws-slack-notifier" ] ] 
 
     MailSenderBucket:
       Type: AWS::S3::Bucket
