@@ -2,7 +2,7 @@ service: s3-mail-sender
 
 provider:
   name: aws
-  runtime: nodejs4.3
+  runtime: nodejs8.10
   stage: dev
   region: us-east-1
   deploymentBucket: serverless-upload-us-east-1
@@ -86,6 +86,25 @@ resources:
                     Fn::Join : [ "", ["arn:aws:s3:::${self:service}-queue/*" ] ]
                   Action:
                     - s3:DeleteObject
+
+    MailSenderBucketAlarm:
+      Type: AWS::CloudWatch::Alarm
+      Properties:
+        MetricName: NumberOfObjects
+        Namespace:  AWS/S3
+        ComparisonOperator: GreaterThanThreshold
+        EvaluationPeriods: 1
+        Period:    60  
+        Statistic: Sum 
+        Threshold: 0
+        Dimensions:
+          - { Name: StorageType, Value: AllStorageTypes }
+          - { Name: BucketName,  Value: { Ref: MailSenderBucket } }
+        TreatMissingData: notBreaching
+        AlarmActions:
+          - Fn::Join: [ ":", [ "arn:aws:sns:ap-northeast-1", { Ref: AWS::AccountId }, "aws-slack-notifier" ] ] 
+        OKActions:
+          - Fn::Join: [ ":", [ "arn:aws:sns:ap-northeast-1", { Ref: AWS::AccountId }, "aws-slack-notifier" ] ] 
 
     MailSenderBucket:
       Type: AWS::S3::Bucket
