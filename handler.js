@@ -55,7 +55,6 @@ module.exports.notifier = async (event, context, callback) => {
   let ret;
 
   const aws = require('aws-sdk');
-  const ssm = new aws.SSM({ region: 'ap-northeast-1' });
 
   if (METHODS[type]) {
     ret = METHODS[type](e);
@@ -71,10 +70,9 @@ module.exports.notifier = async (event, context, callback) => {
   }
 
   try {
-    const url = (await ssm.getParameter({ Name: '/s3mail/slack', WithDecryption: true }).promise()).Parameter.Value;
     const Slack = require('slack-node');
     const slack = new Slack();
-    slack.setWebhook(url);
+    slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_WEBHOOK_URL);
     ret.mrkdwn = true;
 
     const slack_ret = await new Promise((resolve, reject) => {

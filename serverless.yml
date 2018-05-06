@@ -19,6 +19,8 @@ functions:
     handler:     handler.notifier
     description: Post SES's Bounce/Complaint/Delivery status to slack
     timeout: 10
+    environment:
+      S3_MAIL_SENDER_SLACK_WEBHOOK_URL: "${ssm:/webservice/slack/incoming/mailStatus~true}"
 
   mailSender:
     handler:     handler.sender
