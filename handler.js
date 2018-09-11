@@ -99,17 +99,15 @@ module.exports.sender = async (event, context, callback) => {
   const ses = new aws.SES();
 
   try {
-    console.log(`S3.getObject(${bucket}#${key})`);
+    console.log("RECEIVED", key);
     const received = await s3.getObject({ Bucket: bucket, Key: key }).promise();
 
-    console.log(`SES.sendRawEmail(${received.Body.toString().length})`);
+    console.log("MAIL_SIZE", received.Body.toString().length);
     const mail = await ses.sendRawEmail({ RawMessage: { Data: received.Body.toString() } }).promise();
+    console.log("MAIL_RESPONSE", mail);
 
-    console.log(" ==> ", mail);
-    console.log(`S3.deleteObject(${bucket}#${key})`);
-    const deleted = await s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+    await s3.deleteObject({ Bucket: bucket, Key: key }).promise();
 
-    console.log(" ==> ", deleted);
     callback(null, "OK");
   } catch (err) {
     console.log("error happen:", err);
