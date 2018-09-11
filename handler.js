@@ -2,33 +2,38 @@
 
 const METHODS = {
   Bounce: e => {
-    let b = e.bounce;
-    let m = e.mail;
+    const b = e.bounce;
+    const m = e.mail;
     return {
-      text: '*BOUNCE MAIL DETECTED!!!!!*',
       icon_emoji: ':warning:',
-      attachments: [
-        { color: 'warning', title: "Bounce Type", text: b.bounceType + ' / ' + b.bounceSubType, },
-        { color: 'warning', title: "ID", text: m.messageId, },
-        { color: 'warning', title: "From Address", text: m.source, },
-        { color: 'warning', title: "To Address", text: m.destination.toString(), },
-        { color: 'warning', title: "Send At", text: m.timestamp, },
-      ],
+      attachments: [{
+        mrkdwn_in: ['text'],
+        color: 'danger',
+        title: '!!!!! BOUNCE MAIL DETECTED !!!!!',
+        text: [
+          "*Reason: " + b.bounceType + ' / ' + b.bounceSubType + "*",
+          "From: "   + m.source,
+          "To: "     + m.destination.join(", "),
+        ].join("\n"),
+      }],
     }
   },
   Complaint: e => {
-    let c = e.complaint;
-    let m = e.mail;
+    const c = e.complaint;
+    const m = e.mail;
     return {
-      text: '*COMPLAINT MAIL DETECTED!!!!!*',
+      text: '',
       icon_emoji: ':warning:',
-      attachments: [
-        { color: 'danger', title: "Complaint Type", text: c.complaintFeedbackType, },
-        { color: 'danger', title: "ID", text: m.messageId, },
-        { color: 'danger', title: "From Address", text: m.source, },
-        { color: 'danger', title: "To Address", text: m.destination.toString(), },
-        { color: 'danger', title: "Send At", text: m.timestamp, },
-      ],
+      attachments: [{
+        mrkdwn_in: ['text'],
+        color: 'danger',
+        title: '!!!!! COMPLAINT MAIL DETECTED !!!!!',
+        text: [
+          "*Reason: " +  c.complaintFeedbackType + "*",
+          "From: "   + m.source,
+          "To: "     + m.destination.join(", "),
+        ].join("\n"),
+      }],
     };
   },
   Delivery: e => {
@@ -39,7 +44,10 @@ const METHODS = {
         mrkdwn_in: ['text'],
         color: 'good',
         title: 'Sending Mail Success',
-        text: `From: ${m.source}` + "\n" + `To: [ ${m.destination.toString()} ]` + "\n"
+        text: [
+          "From: " + m.source,
+          "To: " +  m.destination.join(", "),
+        ].join("\n"),
       }],
     };
   },
