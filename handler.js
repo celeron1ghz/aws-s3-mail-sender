@@ -52,14 +52,14 @@ const METHODS = {
 module.exports.notifier = async (event, context, callback) => {
   const e = JSON.parse(event.Records[0].Sns.Message);
   const type = e.notificationType;
-  let ret;
+  let param;
 
   const aws = require('aws-sdk');
 
   if (METHODS[type]) {
-    ret = METHODS[type](e);
+    param = METHODS[type](e);
   } else {
-    ret = {
+    param = {
       text: type,
       attachments: [{
         color: 'danger',
@@ -73,16 +73,16 @@ module.exports.notifier = async (event, context, callback) => {
     const Slack = require('slack-node');
     const slack = new Slack();
     slack.setWebhook(process.env.S3_MAIL_SENDER_SLACK_WEBHOOK_URL);
-    ret.mrkdwn = true;
+    param.mrkdwn = true;
 
-    const slack_ret = await new Promise((resolve, reject) => {
-      slack.webhook(ret, (err, res) => {
+    const ret = await new Promise((resolve, reject) => {
+      slack.webhook(param, (err, res) => {
         if (err) { reject(err) } else { resolve(res) }
       });
     });
 
-    console.log(slack_ret);
-    callback(null, slack_ret);
+    console.log(ret.status, ret.statusCode);
+    callback(null, ret);
   } catch (err) {
     console.log("error happen:", err);
     callback(err);
