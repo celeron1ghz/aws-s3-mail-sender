@@ -39,10 +39,7 @@ const METHODS = {
         mrkdwn_in: ['text'],
         color: 'good',
         title: 'Sending Mail Success',
-        text: `From = ${m.source}` + "\n" +
-          `To = [ ${m.destination.toString()} ]` + "\n" +
-          `ID = ${m.messageId}` + "\n" +
-          `SendAt = ${m.timestamp}`,
+        text: `From: ${m.source}` + "\n" + `To: [ ${m.destination.toString()} ]` + "\n"
       }],
     };
   },
