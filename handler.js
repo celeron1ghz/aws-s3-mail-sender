@@ -50,16 +50,12 @@ const METHODS = {
 
 
 module.exports.notifier = async (event, context, callback) => {
+  const aws = require('aws-sdk');
   const e = JSON.parse(event.Records[0].Sns.Message);
   const type = e.notificationType;
-  let param;
-
-  const aws = require('aws-sdk');
-
-  if (METHODS[type]) {
-    param = METHODS[type](e);
-  } else {
-    param = {
+  const param = METHODS[type]
+    ? METHODS[type](e)
+    : {
       text: type,
       attachments: [{
         color: 'danger',
@@ -67,7 +63,6 @@ module.exports.notifier = async (event, context, callback) => {
         title: 'UNKNOWN',
       }],
     };
-  }
 
   try {
     const Slack = require('slack-node');
