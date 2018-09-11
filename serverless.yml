@@ -28,7 +28,9 @@ functions:
     timeout: 20
     role: MailSenderRole
     events:
-      - sns: "${self:service}-queue"
+      - sns:
+          topicName: "${self:service}-queue"
+          displayName: Mail sending queue
 
 resources:
   Resources:
@@ -37,7 +39,7 @@ resources:
       Type: AWS::SNS::Topic
       Properties:
         TopicName:   "${self:service}-delivery-status"
-        DisplayName: Handles SES's Bounce/Complaint/DeliveryStatus
+        DisplayName: Handles SES Bounce/Complaint/DeliveryStatus
         Subscription:
           - Endpoint: { Fn::GetAtt: [NotifierLambdaFunction, Arn] }
             Protocol: lambda
