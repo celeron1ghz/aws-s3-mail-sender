@@ -102,20 +102,19 @@ module.exports.sender = async (event, context, callback) => {
     console.log("RECEIVED", key);
     const received = await s3.getObject({ Bucket: bucket, Key: key }).promise();
 
-    if (received.Metadata.circle)  {
-        try {
-            const data = JSON.parse(received.Metadata.circle);
-            console.log(data);
-        } catch(err) {
-            console.log("Error on parse metadata:", err);
-        }
-    }
-
     console.log("MAIL_SIZE", received.Body.toString().length);
     const mail = await ses.sendRawEmail({ RawMessage: { Data: received.Body.toString() } }).promise();
     console.log("MAIL_RESPONSE", mail);
 
     await s3.deleteObject({ Bucket: bucket, Key: key }).promise();
+
+    if (received.Metadata.circle)  {
+        await s3.putObject({
+          Bucket: process.env.RESULT_BUCKET,
+          Key: mail.MessageId,
+          Body: received.Metadata.circle,
+        }).promise().catch(err => console.log("Error on put metadata:", err));
+    }
 
     callback(null, "OK");
   } catch (err) {

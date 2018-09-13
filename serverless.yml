@@ -7,12 +7,6 @@ provider:
   region: us-east-1
   deploymentBucket: serverless-upload-us-east-1
   versionFunctions: false
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - ssm:GetParameter
-      Resource:
-        Fn::Join: [ ":", ["arn:aws:ssm:ap-northeast-1", { Ref: AWS::AccountId }, "parameter/s3mail/slack"]]
 
 functions:
   notifier:
@@ -27,6 +21,8 @@ functions:
     description: Sending email with SES from S3 data
     timeout: 20
     role: MailSenderRole
+    environment:
+      RESULT_BUCKET: { Ref: MailResultBucket }
     events:
       - sns:
           topicName: "${self:service}-queue"
@@ -80,14 +76,19 @@ resources:
                     - logs:PutLogEvents
                     - logs:DescribeLogStreams
                 - Effect: Allow
+                  Action: [ses:SendRawEmail]
                   Resource: "*"
-                  Action:
-                    - ses:SendRawEmail
                 - Effect: Allow
-                  Resource:
-                    Fn::Join : [ "", ["arn:aws:s3:::${self:service}-queue/*" ] ]
-                  Action:
-                    - s3:DeleteObject
+                  Action: [s3:DeleteObject]
+                  Resource: "arn:aws:s3:::${self:service}-queue/*"
+                - Effect: Allow
+                  Action: [s3:PutObject]
+                  Resource: "arn:aws:s3:::${self:service}-result/*"
+
+    MailResultBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: "${self:service}-result"
 
     MailSenderBucket:
       Type: AWS::S3::Bucket
