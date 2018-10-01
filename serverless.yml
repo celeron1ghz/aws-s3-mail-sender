@@ -89,6 +89,10 @@ resources:
       Type: AWS::S3::Bucket
       Properties:
         BucketName: "${self:service}-result"
+        LifecycleConfiguration:
+          Rules:
+            - ExpirationInDays: 1
+              Status: Enabled
 
     MailSenderBucket:
       Type: AWS::S3::Bucket
